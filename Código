@@ -1,0 +1,216 @@
+📌 Extracción
+# Librerías principales
+import pandas as pd
+import numpy as np
+
+# Visualización
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Configuración
+pd.set_option('display.max_columns', None)
+sns.set(style="whitegrid")
+
+ruta_datos = "/TelecomX_Data.json"
+
+df_raw = pd.read_json(ruta_datos)
+df_raw.head()
+
+from google.colab import drive
+drive.mount('/content/drive')
+
+df = pd.json_normalize(df_raw.to_dict('records'))
+df.head()
+
+# Dimensiones
+df.shape
+ 
+🔧 Transformación
+
+# Tipos de datos
+df.info()
+
+# Valores únicos de Churn
+df['Churn'].value_counts(dropna=False)
+
+ruta_diccionario = "/TelecomX_Data.json"
+
+with open(ruta_diccionario, "r", encoding="utf-8") as f:
+    print(f.read())
+
+df.isnull().sum()
+
+(df['Churn'] == '').sum()
+
+df.duplicated().sum()
+
+df = df[df['Churn'] != '']
+df['Churn'].value_counts()
+
+df['account.Charges.Total'] = pd.to_numeric(
+    df['account.Charges.Total'], errors='coerce'
+)
+
+df['account.Charges.Total'].isnull().sum()
+
+df['account.Charges.Total'].fillna(0, inplace=True)
+
+df['Cuentas_Diarias'] = df['account.Charges.Monthly'] / 30
+df[['account.Charges.Monthly', 'Cuentas_Diarias']].head()
+
+columnas_binarias = [
+    'Churn',
+    'customer.Partner',
+    'customer.Dependents',
+    'phone.PhoneService',
+    'account.PaperlessBilling'
+]
+
+for col in columnas_binarias:
+    df[col] = df[col].map({'Yes': 1, 'No': 0})
+
+df.rename(columns={
+    'customer.tenure': 'Tenure_Meses',
+    'account.Charges.Monthly': 'Cargo_Mensual',
+    'account.Charges.Total': 'Cargo_Total',
+    'account.Contract': 'Tipo_Contrato'
+}, inplace=True)
+
+
+     
+📊 Carga y análisis
+sns.countplot(x='Churn', data=df)
+plt.title("Distribución de Evasión de Clientes")
+plt.show()
+
+sns.countplot(x='Tipo_Contrato', hue='Churn', data=df)
+plt.xticks(rotation=45)
+plt.title("Churn según tipo de contrato")
+plt.show()
+
+sns.boxplot(x='Churn', y='Tenure_Meses', data=df)
+plt.title("Tenure vs Churn")
+plt.show()
+
+sns.boxplot(x='Churn', y='Cargo_Mensual', data=df)
+plt.title("Cargo mensual vs Churn")
+plt.show()
+
+df_numerico = df.select_dtypes(include=['int64', 'float64'])
+df_numerico.head()
+
+correlacion = df_numerico.corr()
+correlacion
+
+plt.figure(figsize=(12,8))
+sns.heatmap(correlacion, annot=True, cmap='coolwarm', fmt=".2f")
+plt.title("Matriz de Correlación entre Variables")
+plt.show()
+
+sns.boxplot(x='Churn', y='Cuentas_Diarias', data=df)
+plt.title("Relación entre Cuentas Diarias y Churn")
+plt.show()
+
+sns.scatterplot(
+    x='Tenure_Meses',
+    y='Cuentas_Diarias',
+    hue='Churn',
+    data=df,
+    alpha=0.6
+)
+plt.title("Tenure vs Cuentas Diarias según Churn")
+plt.show()
+
+servicios = [
+    'internet.OnlineSecurity',
+    'internet.OnlineBackup',
+    'internet.DeviceProtection',
+    'internet.TechSupport',
+    'internet.StreamingTV',
+    'internet.StreamingMovies'
+]
+
+df['Cantidad_Servicios'] = df[servicios].apply(
+    lambda x: sum(x == 'Yes'), axis=1
+)
+
+df[['Cantidad_Servicios']].head()
+
+sns.boxplot(x='Churn', y='Cantidad_Servicios', data=df)
+plt.title("Cantidad de Servicios vs Churn")
+plt.show()
+
+correlacion_churn = correlacion['Churn'].sort_values(ascending=False)
+correlacion_churn
+
+churn_rate = df['Churn'].mean() * 100
+
+plt.figure(figsize=(5,5))
+plt.bar(['Churn'], [churn_rate])
+plt.ylabel('Porcentaje (%)')
+plt.title('Tasa General de Evasión de Clientes')
+plt.ylim(0, 100)
+plt.show()
+
+contrato_churn = df.groupby('Tipo_Contrato')['Churn'].mean().sort_values()
+
+contrato_churn.plot(
+    kind='bar',
+    figsize=(7,5),
+    title='Tasa de Churn por Tipo de Contrato',
+    ylabel='Churn (%)'
+)
+plt.show()
+
+tenure_churn = df.groupby('Churn')['Tenure_Meses'].mean()
+
+tenure_churn.plot(
+    kind='bar',
+    figsize=(6,5),
+    title='Antigüedad Promedio de Clientes',
+    ylabel='Meses'
+)
+plt.show()
+
+sns.boxplot(x='Churn', y='Cuentas_Diarias', data=df)
+plt.title('Gasto Diario vs Evasión')
+plt.ylabel('Monto Diario')
+plt.show()
+
+servicios_churn = df.groupby('Churn')['Cantidad_Servicios'].mean()
+
+servicios_churn.plot(
+    kind='bar',
+    figsize=(6,5),
+    title='Cantidad Promedio de Servicios Contratados',
+    ylabel='Servicios'
+)
+plt.show()
+
+
+     
+📄Informe final
+
+##Análisis Realizado##
+
+Limpieza y normalización de datos JSON
+
+Tratamiento de valores nulos e inconsistencias
+
+Creación de variables derivadas (Cuentas_Diarias, Cantidad_Servicios)
+
+Análisis exploratorio de datos (EDA)
+
+Análisis de correlación
+
+Visualizaciones orientadas a negocio
+
+##Principales Hallazgos##
+
+Los contratos mensuales presentan mayor tasa de churn
+
+Clientes con menor antigüedad son más propensos a abandonar
+
+Clientes con mayor gasto diario presentan mayor riesgo de evasión
+
+La contratación de múltiples servicios reduce significativamente el churn
